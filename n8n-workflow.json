@@ -1,0 +1,345 @@
+{
+  "name": "Syntern — Multi-Agent Orchestration",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "syntern/session/start",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-session-start",
+      "name": "🚀 Session Start Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "notes": "Receives: { studentName, role, company, durationMinutes }"
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "schema": "public",
+        "table": "sessions",
+        "columns": "student_name, role, company, duration_minutes, status, started_at",
+        "additionalFields": {}
+      },
+      "id": "supabase-create-session",
+      "name": "📦 Create Session in Supabase",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { sessionId: $json.id, status: 'started', message: 'Session initialized. Welcome aboard!' } }}"
+      },
+      "id": "respond-session-created",
+      "name": "✅ Respond: Session Created",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "unit": "minutes",
+        "amount": "={{ $json.durationMinutes }}"
+      },
+      "id": "wait-session-end",
+      "name": "⏳ Wait: Session Duration",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [680, 500],
+      "notes": "Waits the full session duration then triggers evaluation"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.FRONTEND_URL }}/api/trigger-evaluation",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "sessionId", "value": "={{ $json.sessionId }}" },
+            { "name": "trigger", "value": "timeout" }
+          ]
+        }
+      },
+      "id": "trigger-evaluation",
+      "name": "📊 Trigger Evaluation",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [900, 500]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "syntern/message/send",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-message",
+      "name": "💬 Message Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 600],
+      "notes": "Receives: { sessionId, channel, agentKey, userMessage, history }"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": false },
+          "conditions": [
+            { "leftValue": "={{ $json.channel }}", "rightValue": "engineering", "operator": { "type": "string", "operation": "contains" } }
+          ]
+        }
+      },
+      "id": "route-to-agent",
+      "name": "🔀 Route to Agent",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [460, 600],
+      "notes": "Routes message to correct agent based on channel"
+    },
+    {
+      "parameters": {
+        "model": "claude-sonnet-4-20250514",
+        "options": {
+          "systemMessage": "You are Sara K., Engineering Manager. Be professional, warm, sometimes unclear. Short Slack-style replies only. Max 2-3 sentences.",
+          "maxTokens": 300
+        }
+      },
+      "id": "agent-manager",
+      "name": "👩‍💼 Agent: Sara (Manager)",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.3,
+      "position": [680, 520]
+    },
+    {
+      "parameters": {
+        "model": "claude-sonnet-4-20250514",
+        "options": {
+          "systemMessage": "You are Marcus T., Tech Lead. Direct, slightly terse. Say 'it's in the docs' sometimes. Short replies only. Push self-sufficiency.",
+          "maxTokens": 300
+        }
+      },
+      "id": "agent-techlead",
+      "name": "👨‍💻 Agent: Marcus (Tech Lead)",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.3,
+      "position": [680, 660]
+    },
+    {
+      "parameters": {
+        "model": "claude-sonnet-4-20250514",
+        "options": {
+          "systemMessage": "You are Nadia R., Client/Product Owner. Care about business impact, not tech. Slightly impatient. Short, pressured replies.",
+          "maxTokens": 300
+        }
+      },
+      "id": "agent-client",
+      "name": "👩‍🔧 Agent: Nadia (Client)",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.3,
+      "position": [680, 800]
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "schema": "public",
+        "table": "messages",
+        "columns": "session_id, channel, sender, content, timestamp",
+        "additionalFields": {}
+      },
+      "id": "save-message",
+      "name": "💾 Save Message to Supabase",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [900, 660]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { reply: $json.reply, agent: $json.agentKey, timestamp: $now } }}"
+      },
+      "id": "respond-message",
+      "name": "✅ Respond: Agent Reply",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1100, 660]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "seconds", "secondsInterval": 90 }]
+        }
+      },
+      "id": "escalation-cron",
+      "name": "⏰ Escalation Check (every 90s)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [240, 900],
+      "notes": "Checks if student has been silent. Triggers escalation if needed."
+    },
+    {
+      "parameters": {
+        "operation": "select",
+        "schema": "public",
+        "table": "sessions",
+        "filterType": "manual",
+        "filters": {
+          "conditions": [
+            { "keyName": "status", "condition": "eq", "keyValue": "active" },
+            { "keyName": "last_message_at", "condition": "lt", "keyValue": "={{ $now.minus(90, 'seconds').toISO() }}" }
+          ]
+        }
+      },
+      "id": "check-silent-students",
+      "name": "🔍 Find Silent Students",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [460, 900]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "conditions": [
+            { "leftValue": "={{ $json.length }}", "rightValue": 0, "operator": { "type": "number", "operation": "gt" } }
+          ]
+        }
+      },
+      "id": "has-silent-students",
+      "name": "Has Silent Students?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [680, 900]
+    },
+    {
+      "parameters": {
+        "model": "claude-sonnet-4-20250514",
+        "options": {
+          "systemMessage": "You are Sara K., Engineering Manager. The intern has gone silent. Send a brief, slightly concerned check-in Slack message. 1-2 sentences max.",
+          "maxTokens": 150
+        },
+        "prompt": "The intern {{ $json.student_name }} has not responded in over 90 seconds during their internship simulation. Write a check-in message."
+      },
+      "id": "generate-escalation",
+      "name": "🚨 Generate Escalation Message",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.3,
+      "position": [900, 860]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.FRONTEND_URL }}/api/push-message",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "sessionId", "value": "={{ $json.id }}" },
+            { "name": "channel", "value": "general" },
+            { "name": "agent", "value": "manager" },
+            { "name": "message", "value": "={{ $json.reply }}" }
+          ]
+        }
+      },
+      "id": "push-escalation",
+      "name": "📤 Push Escalation to Frontend",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1100, 860]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "syntern/session/evaluate",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-evaluate",
+      "name": "📊 Evaluation Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 1100],
+      "notes": "Receives: { sessionId, transcript, tasksCompleted, escalationCount }"
+    },
+    {
+      "parameters": {
+        "model": "claude-sonnet-4-20250514",
+        "options": {
+          "systemMessage": "You are an experienced engineering manager evaluating an intern. Be honest, direct, and constructive. Rate each skill 0-100.",
+          "maxTokens": 1000
+        },
+        "prompt": "Evaluate this intern simulation session:\n\nStudent: {{ $json.studentName }}\nRole: {{ $json.role }}\nDuration: {{ $json.durationMinutes }} minutes\nTasks Completed: {{ $json.tasksCompleted }}/{{ $json.totalTasks }}\nEscalations Triggered: {{ $json.escalationCount }}\n\nTranscript:\n{{ $json.transcript }}\n\nRate these skills (0-100 each):\nCOMMUNICATION:\nPRIORITIZATION:\nINITIATIVE:\nPROFESSIONALISM:\nDELIVERY:\n\nThen write 3-4 paragraphs of detailed feedback."
+      },
+      "id": "evaluate-agent",
+      "name": "🧠 Evaluation Agent (Claude)",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.3,
+      "position": [460, 1100]
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "schema": "public",
+        "table": "evaluations",
+        "columns": "session_id, scores, feedback, badge, created_at",
+        "additionalFields": {}
+      },
+      "id": "save-evaluation",
+      "name": "💾 Save Evaluation",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [680, 1100]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { evaluation: $json.evaluation, badge: 'Remote Work Simulator', status: 'complete' } }}"
+      },
+      "id": "respond-evaluation",
+      "name": "✅ Respond: Evaluation Done",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [900, 1100]
+    }
+  ],
+  "connections": {
+    "🚀 Session Start Webhook": { "main": [[{ "node": "📦 Create Session in Supabase", "type": "main", "index": 0 }]] },
+    "📦 Create Session in Supabase": {
+      "main": [
+        [{ "node": "✅ Respond: Session Created", "type": "main", "index": 0 }],
+        [{ "node": "⏳ Wait: Session Duration", "type": "main", "index": 0 }]
+      ]
+    },
+    "⏳ Wait: Session Duration": { "main": [[{ "node": "📊 Trigger Evaluation", "type": "main", "index": 0 }]] },
+    "💬 Message Webhook": { "main": [[{ "node": "🔀 Route to Agent", "type": "main", "index": 0 }]] },
+    "🔀 Route to Agent": {
+      "main": [
+        [{ "node": "👩‍💼 Agent: Sara (Manager)", "type": "main", "index": 0 }],
+        [{ "node": "👨‍💻 Agent: Marcus (Tech Lead)", "type": "main", "index": 0 }],
+        [{ "node": "👩‍🔧 Agent: Nadia (Client)", "type": "main", "index": 0 }]
+      ]
+    },
+    "👩‍💼 Agent: Sara (Manager)": { "main": [[{ "node": "💾 Save Message to Supabase", "type": "main", "index": 0 }]] },
+    "👨‍💻 Agent: Marcus (Tech Lead)": { "main": [[{ "node": "💾 Save Message to Supabase", "type": "main", "index": 0 }]] },
+    "👩‍🔧 Agent: Nadia (Client)": { "main": [[{ "node": "💾 Save Message to Supabase", "type": "main", "index": 0 }]] },
+    "💾 Save Message to Supabase": { "main": [[{ "node": "✅ Respond: Agent Reply", "type": "main", "index": 0 }]] },
+    "⏰ Escalation Check (every 90s)": { "main": [[{ "node": "🔍 Find Silent Students", "type": "main", "index": 0 }]] },
+    "🔍 Find Silent Students": { "main": [[{ "node": "Has Silent Students?", "type": "main", "index": 0 }]] },
+    "Has Silent Students?": { "main": [[{ "node": "🚨 Generate Escalation Message", "type": "main", "index": 0 }], []] },
+    "🚨 Generate Escalation Message": { "main": [[{ "node": "📤 Push Escalation to Frontend", "type": "main", "index": 0 }]] },
+    "📊 Evaluation Webhook": { "main": [[{ "node": "🧠 Evaluation Agent (Claude)", "type": "main", "index": 0 }]] },
+    "🧠 Evaluation Agent (Claude)": { "main": [[{ "node": "💾 Save Evaluation", "type": "main", "index": 0 }]] },
+    "💾 Save Evaluation": { "main": [[{ "node": "✅ Respond: Evaluation Done", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" },
+  "meta": {
+    "description": "Syntern multi-agent internship simulation orchestration. Manages sessions, routes messages to AI agents (Manager/TechLead/Client), handles escalations for silent students, and runs behavioral evaluation.",
+    "endpoints": {
+      "start_session": "POST /webhook/syntern/session/start",
+      "send_message": "POST /webhook/syntern/message/send",
+      "evaluate": "POST /webhook/syntern/session/evaluate"
+    },
+    "env_vars_required": ["FRONTEND_URL", "ANTHROPIC_API_KEY", "SUPABASE_URL", "SUPABASE_API_KEY"]
+  }
+}
