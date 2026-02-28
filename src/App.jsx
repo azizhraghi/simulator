@@ -254,25 +254,162 @@ function MeetingPopup({ meeting, onJoin, onDecline }) {
   );
 }
 
+// ─── GITHUB REPO HELPERS ─────────────────────────────────────────────────────────
+function parseGitHubUrl(url) {
+  const match = url.match(/github\.com\/([^/]+)\/([^/\s#?]+)/);
+  if (!match) return null;
+  return { owner: match[1], repo: match[2].replace(/\.git$/, "") };
+}
+
+async function fetchGitHubRepo(repoUrl) {
+  const parsed = parseGitHubUrl(repoUrl);
+  if (!parsed) throw new Error("Invalid GitHub URL");
+
+  const { owner, repo } = parsed;
+  const apiBase = `https://api.github.com/repos/${owner}/${repo}`;
+
+  // Fetch repo info
+  const repoRes = await fetch(apiBase);
+  if (!repoRes.ok) throw new Error("Repo not found or is private");
+  const repoInfo = await repoRes.json();
+
+  // Fetch file tree (only default branch, first level + key files)
+  const treeRes = await fetch(`${apiBase}/git/trees/${repoInfo.default_branch}?recursive=1`);
+  const treeData = await treeRes.json();
+  const files = (treeData.tree || []).filter(f => f.type === "blob").map(f => f.path);
+
+  // Pick the most important files to review (max ~8 files, prioritize key ones)
+  const priorityFiles = [
+    "README.md", "readme.md", "package.json", "requirements.txt",
+    "index.html", "index.js", "index.ts", "main.py", "app.py",
+    "App.jsx", "App.tsx", "App.js",
+  ];
+  const srcFiles = files.filter(f => !f.includes("node_modules") && !f.includes(".lock") && !f.includes("dist/"));
+  const toFetch = [
+    ...srcFiles.filter(f => priorityFiles.some(p => f.endsWith(p))),
+    ...srcFiles.filter(f => /\.(js|jsx|ts|tsx|py|html|css|java|go|rs|rb)$/.test(f) && !priorityFiles.some(p => f.endsWith(p))),
+  ].slice(0, 8);
+
+  // Fetch file contents
+  const fileContents = {};
+  for (const filePath of toFetch) {
+    try {
+      const fRes = await fetch(`${apiBase}/contents/${filePath}`);
+      const fData = await fRes.json();
+      if (fData.encoding === "base64" && fData.size < 50000) {
+        fileContents[filePath] = atob(fData.content);
+      }
+    } catch { /* skip unreadable files */ }
+  }
+
+  return {
+    name: repoInfo.name,
+    description: repoInfo.description || "No description",
+    language: repoInfo.language || "Unknown",
+    stars: repoInfo.stargazers_count,
+    fileTree: srcFiles.slice(0, 40),
+    fileContents,
+  };
+}
+
+async function reviewRepoCode(repoData, taskTitle, roleName) {
+  const filesSummary = Object.entries(repoData.fileContents)
+    .map(([path, content]) => `--- ${path} ---\n${content.slice(0, 3000)}`)
+    .join("\n\n");
+
+  const review = await callClaude(
+    [{
+      role: "user", content: `Review this intern's code submission for the task: "${taskTitle}"
+
+Repo: ${repoData.name}
+Language: ${repoData.language}
+Description: ${repoData.description}
+
+File tree:
+${repoData.fileTree.join("\n")}
+
+Key files:
+${filesSummary}
+
+Provide a Slack-style code review (keep it concise, 4-8 lines):
+1. What they did well (1-2 points)
+2. What needs improvement (1-3 specific issues with file names and line suggestions)
+3. Verdict: "Approved ✅" or "Changes Requested 🔄"
+
+Be specific, mention file names, be constructive. Act like a real tech lead doing a PR review.` }],
+    `You are Marcus T., a direct and slightly terse Tech Lead reviewing an intern's (${roleName}) code submission. Keep it short, Slack-style. Be honest but constructive. Reference specific files and patterns you see.`
+  );
+
+  return review;
+}
+
 // ─── TASK CARD ────────────────────────────────────────────────────────────────
-function TaskCard({ task, colColor, cols, colMeta, onUpdate }) {
+function TaskCard({ task, colColor, cols, colMeta, onUpdate, onSubmitRepo }) {
   const [expanded, setExpanded] = useState(false);
+  const [repoUrl, setRepoUrl] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+
+  const handleSubmitRepo = async (e) => {
+    e.stopPropagation();
+    if (!repoUrl.trim() || submitting) return;
+    setSubmitting(true);
+    try {
+      await onSubmitRepo(task, repoUrl.trim());
+      setSubmitted(true);
+    } catch (err) {
+      console.error(err);
+    }
+    setSubmitting(false);
+  };
 
   return (
-    <div style={{ background: "#111118", border: "1px solid #1e1e2d", borderRadius: 10, padding: 12, marginBottom: 8, cursor: "pointer", transition: "border-color .2s" }}
+    <div style={{ background: "#111118", border: `1px solid ${submitted ? "#0ea5e922" : "#1e1e2d"}`, borderRadius: 10, padding: 12, marginBottom: 8, cursor: "pointer", transition: "border-color .2s" }}
       onMouseEnter={e => e.currentTarget.style.borderColor = colColor}
-      onMouseLeave={e => e.currentTarget.style.borderColor = "#1e1e2d"}
+      onMouseLeave={e => e.currentTarget.style.borderColor = submitted ? "#0ea5e922" : "#1e1e2d"}
       onClick={() => setExpanded(!expanded)}>
       <div style={{ fontSize: ".8rem", fontWeight: 500, marginBottom: 8, lineHeight: 1.4 }}>{task.title}</div>
       <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
         <Badge text={task.priority} color={task.priority === "HIGH" ? "#ef4444" : task.priority === "MED" ? "#f59e0b" : "#22c55e"} />
         {task.deadline && <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: ".6rem", color: "#475569" }}>⏰ {task.deadline}</span>}
+        {submitted && <Badge text="SUBMITTED" color="#0ea5e9" />}
         <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: ".58rem", color: "#2d2d3d", marginLeft: "auto" }}>{expanded ? "▲" : "▼"}</span>
       </div>
       {expanded && task.description && (
         <div style={{ marginTop: 10, padding: "10px 12px", background: "#0d0d14", border: "1px solid #1e1e2d", borderRadius: 8 }}>
           <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: ".6rem", color: "#7c3aed", letterSpacing: 1.5, marginBottom: 6 }}>DETAILS</div>
           <pre style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: ".72rem", color: "#94a3b8", lineHeight: 1.7, whiteSpace: "pre-wrap", margin: 0 }}>{task.description}</pre>
+        </div>
+      )}
+      {/* GitHub repo submission */}
+      {expanded && task.status !== "done" && (
+        <div onClick={e => e.stopPropagation()} style={{ marginTop: 10, padding: "10px 12px", background: "#0d0d14", border: "1px solid #1e1e2d", borderRadius: 8 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
+            <span style={{ fontSize: ".9rem" }}>🔗</span>
+            <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: ".6rem", color: "#0ea5e9", letterSpacing: 1.5 }}>SUBMIT GITHUB REPO</div>
+          </div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <input
+              value={repoUrl}
+              onChange={e => setRepoUrl(e.target.value)}
+              placeholder="https://github.com/user/repo"
+              disabled={submitting || submitted}
+              style={{ flex: 1, background: "#111118", border: "1px solid #2d2d3d", borderRadius: 6, color: "#e2e8f0", fontFamily: "'IBM Plex Mono',monospace", fontSize: ".72rem", padding: "6px 10px", outline: "none" }}
+            />
+            <button
+              onClick={handleSubmitRepo}
+              disabled={!repoUrl.trim() || submitting || submitted}
+              style={{
+                background: submitted ? "#0ea5e922" : submitting ? "#1e1e2d" : "#0ea5e9",
+                border: submitted ? "1px solid #0ea5e955" : "none", borderRadius: 6,
+                color: submitted ? "#0ea5e9" : "#fff", fontFamily: "'IBM Plex Mono',monospace",
+                fontSize: ".65rem", padding: "6px 12px", cursor: submitting || submitted ? "default" : "pointer",
+                letterSpacing: .5, whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 6,
+              }}>
+              {submitted ? "✅ Reviewed" : submitting ? <><Spinner size={10} color="#0ea5e9" /> Reviewing...</> : "🚀 Submit"}
+            </button>
+          </div>
+          {submitted && <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: ".62rem", color: "#475569", marginTop: 6 }}>Check #engineering for Marcus's review</div>}
         </div>
       )}
       {task.status !== "done" && (
@@ -289,7 +426,7 @@ function TaskCard({ task, colColor, cols, colMeta, onUpdate }) {
 }
 
 // ─── TASK BOARD ───────────────────────────────────────────────────────────────
-function TaskBoard({ tasks, onUpdate }) {
+function TaskBoard({ tasks, onUpdate, onSubmitRepo }) {
   const cols = ["todo", "in_progress", "review", "done"];
   const colMeta = {
     todo: { label: "To Do", color: "#475569" },
@@ -308,7 +445,7 @@ function TaskBoard({ tasks, onUpdate }) {
             <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: ".68rem", color: "#2d2d3d", marginLeft: "auto" }}>{tasks.filter(t => t.status === col).length}</span>
           </div>
           {tasks.filter(t => t.status === col).map(task => (
-            <TaskCard key={task.id} task={task} colColor={colMeta[col].color} cols={cols} colMeta={colMeta} onUpdate={onUpdate} />
+            <TaskCard key={task.id} task={task} colColor={colMeta[col].color} cols={cols} colMeta={colMeta} onUpdate={onUpdate} onSubmitRepo={onSubmitRepo} />
           ))}
         </div>
       ))}
@@ -647,6 +784,21 @@ function Workspace({ session, onEnd }) {
     setAgentLoading(false);
   };
 
+  // ── Submit GitHub Repo for review ──
+  const handleSubmitRepo = async (task, url) => {
+    try {
+      addMessage("# engineering", "techlead", "Pulling up the repo... give me a sec 👀");
+      setActivePanel("slack");
+      setActiveChannel("# engineering");
+      const repoData = await fetchGitHubRepo(url);
+      const review = await reviewRepoCode(repoData, task.title, session.role.label);
+      addMessage("# engineering", "techlead", "Code Review for: " + task.title + "\n\n" + review);
+      setTasks(t => t.map(tk => tk.id === task.id ? { ...tk, status: "review" } : tk));
+    } catch (err) {
+      addMessage("# engineering", "techlead", "Couldn't access that repo. Make sure it's public and the URL is correct. Try again.");
+    }
+  };
+
   // ── End session + evaluate ──
   const handleEndSession = async () => {
     setLoading(true);
@@ -816,7 +968,7 @@ Be direct, constructive, and human. Not a robot.` }],
                           <span style={{ fontWeight: 600, fontSize: ".82rem", color: m.agent === "user" ? "#00ff88" : m.color }}>{m.name}</span>
                           <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: ".6rem", color: "#2d2d3d" }}>{m.time}</span>
                         </div>
-                        <div style={{ fontSize: ".85rem", color: "#94a3b8", lineHeight: 1.65 }}>{m.text}</div>
+                        <div style={{ fontSize: ".85rem", color: "#94a3b8", lineHeight: 1.65, whiteSpace: "pre-wrap" }}>{m.text}</div>
                       </div>
                     </div>
                   ))}
@@ -845,7 +997,7 @@ Be direct, constructive, and human. Not a robot.` }],
                 </div>
               </div>
             )}
-            {activePanel === "tasks" && <TaskBoard tasks={tasks} onUpdate={(id, status) => setTasks(t => t.map(tk => tk.id === id ? { ...tk, status } : tk))} />}
+            {activePanel === "tasks" && <TaskBoard tasks={tasks} onUpdate={(id, status) => setTasks(t => t.map(tk => tk.id === id ? { ...tk, status } : tk))} onSubmitRepo={handleSubmitRepo} />}
             {activePanel === "docs" && <DocsPanel docs={docs} />}
           </div>
         </div>
