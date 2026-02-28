@@ -51,7 +51,7 @@ async function callClaude(messages, system) {
 const G = `
 @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Syne:wght@700;800&display=swap');
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-body{background:#0a0a0f;font-family:'IBM Plex Sans',sans-serif;color:#e2e8f0;overflow:hidden}
+body{background:#0a0a0f;font-family:'IBM Plex Sans',sans-serif;color:#e2e8f0}
 ::-webkit-scrollbar{width:4px}
 ::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:#2d2d3d;border-radius:2px}
@@ -108,7 +108,7 @@ function SetupScreen({ onStart }) {
   }, []);
 
   return (
-    <div style={{ minHeight: "100vh", background: "#0a0a0f", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 24, position: "relative", overflow: "hidden" }}>
+    <div style={{ minHeight: "100vh", background: "#0a0a0f", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 24, position: "relative", overflow: "auto" }}>
       <style>{G}</style>
       {/* bg glow */}
       <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse 60% 40% at 50% 30%, rgba(124,58,237,.12) 0%, transparent 70%)", pointerEvents: "none" }} />
