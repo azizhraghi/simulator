@@ -47,6 +47,40 @@ async function callClaude(messages, system) {
   return data.choices[0].message.content;
 }
 
+// ─── VOICE UTILS (ElevenLabs) ────────────────────────────────────────────────────
+const ELEVENLABS_API_KEY = import.meta.env.VITE_ELEVENLABS_API_KEY;
+
+const VOICE_IDS = {
+  manager: "EXAVITQu4vr4xnSDxMaL",
+  techlead: "pNInz6obpgDQGcFmaJgB",
+  client: "MF3mGyEYCl7XYWbV9V6O",
+};
+
+async function speakText(text, agentKey, onStart, onEnd) {
+  if (!ELEVENLABS_API_KEY) { if (onEnd) onEnd(); return; }
+  const cleanText = text.replace(/\*/g, "").replace(/_[^_]+_/g, "").replace(/<[^>]+>/g, "").trim();
+  if (!cleanText) { if (onEnd) onEnd(); return; }
+  const voiceId = VOICE_IDS[agentKey] || VOICE_IDS.manager;
+  try {
+    const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}?output_format=mp3_44100_128`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "xi-api-key": ELEVENLABS_API_KEY },
+      body: JSON.stringify({ text: cleanText, model_id: "eleven_turbo_v2_5", voice_settings: { stability: 0.5, similarity_boost: 0.75 } })
+    });
+    if (!response.ok) { if (onEnd) onEnd(); return; }
+    const audioBlob = await response.blob();
+    const audioUrl = URL.createObjectURL(audioBlob);
+    const audio = new Audio(audioUrl);
+    audio.onplay = () => { if (onStart) onStart(); };
+    audio.onended = () => { URL.revokeObjectURL(audioUrl); if (onEnd) onEnd(); };
+    audio.onerror = () => { URL.revokeObjectURL(audioUrl); if (onEnd) onEnd(); };
+    await audio.play();
+  } catch (error) {
+    console.error("Failed to play ElevenLabs audio", error);
+    if (onEnd) onEnd();
+  }
+}
+
 // ─── STYLES ───────────────────────────────────────────────────────────────────
 const G = `
 @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Syne:wght@700;800&display=swap');
@@ -82,11 +116,11 @@ const Badge = ({ text, color = "#7c3aed" }) => (
 function SetupScreen({ onStart }) {
   const [roleText, setRoleText] = useState("");
   const [companyText, setCompanyText] = useState("");
-  const [duration, setDuration] = useState(null);
+  const [duration, setDuration] = useState(DURATIONS[1]);
   const [name, setName] = useState("");
   const [starting, setStarting] = useState(false);
 
-  const canStart = roleText.trim() && duration && name.trim() && !starting;
+  const canStart = roleText.trim() && name.trim() && !starting;
 
   const handleStart = async () => {
     setStarting(true);
@@ -167,23 +201,6 @@ function SetupScreen({ onStart }) {
                   style={{ background: roleText === r ? "rgba(124,58,237,.2)" : "#0d0d14", border: `1px solid ${roleText === r ? "#7c3aed" : "#2d2d3d"}`, borderRadius: 100, color: roleText === r ? "#a78bfa" : "#475569", fontFamily: "'IBM Plex Mono',monospace", fontSize: ".65rem", padding: "5px 12px", cursor: "pointer", transition: "all .15s" }}>
                   {r}
                 </button>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Step 3: Duration */}
-        <div className="fadeUp" style={{ marginBottom: 32 }}>
-          <div style={{ background: "#111118", border: "1px solid #1e1e2d", borderRadius: 16, padding: 28 }}>
-            <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: ".68rem", color: "#7c3aed", letterSpacing: 2, marginBottom: 16 }}>SESSION LENGTH</div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 10 }}>
-              {DURATIONS.map(d => (
-                <div key={d.label} onClick={() => setDuration(d)}
-                  style={{ background: duration?.label === d.label ? "rgba(0,255,136,.08)" : "#0d0d14", border: `1px solid ${duration?.label === d.label ? "#00ff88" : "#2d2d3d"}`, borderRadius: 12, padding: 16, cursor: "pointer", transition: "all .2s", textAlign: "center" }}>
-                  <div style={{ fontFamily: "'Syne',sans-serif", fontWeight: 700, fontSize: "1.1rem", color: duration?.label === d.label ? "#00ff88" : "#e2e8f0", marginBottom: 4 }}>{d.minutes} min</div>
-                  <div style={{ fontWeight: 600, fontSize: ".82rem", marginBottom: 4 }}>{d.label}</div>
-                  <div style={{ fontSize: ".72rem", color: "#475569" }}>{d.desc}</div>
-                </div>
               ))}
             </div>
           </div>
@@ -593,6 +610,155 @@ function EvalReport({ data, session, onRestart }) {
   );
 }
 
+// ─── PRIVATE CALL SCREEN ────────────────────────────────────────────────────
+function PrivateCallScreen({ agentKey, agent, session, onHangUp }) {
+  const [messages, setMessages] = useState([]);
+  const [inputText, setInputText] = useState("");
+  const [isListening, setIsListening] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [callDuration, setCallDuration] = useState(0);
+  const chatEndRef = useRef(null);
+  const recognitionRef = useRef(null);
+
+  useEffect(() => { const t = setInterval(() => setCallDuration(d => d + 1), 1000); return () => clearInterval(t); }, []);
+  const formatDuration = (s) => `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
+  useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
+
+  useEffect(() => {
+    if (("webkitSpeechRecognition" in window) || ("SpeechRecognition" in window)) {
+      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+      const recognition = new SR();
+      recognition.continuous = false; recognition.interimResults = true; recognition.lang = "en-US";
+      recognition.onstart = () => setIsListening(true);
+      recognition.onend = () => setIsListening(false);
+      recognition.onresult = (e) => {
+        for (let i = e.resultIndex; i < e.results.length; ++i) {
+          if (e.results[i].isFinal) { setInputText(""); sendMessage(e.results[i][0].transcript); }
+          else { setInputText(e.results[i][0].transcript); }
+        }
+      };
+      recognitionRef.current = recognition;
+    }
+    return () => recognitionRef.current?.stop();
+  }, [messages]);
+
+  const toggleMic = () => { if (isListening) recognitionRef.current?.stop(); else { setInputText(""); recognitionRef.current?.start(); } };
+
+  const sysPrompts = {
+    manager: `You are Sara K., Engineering Manager at ${session.role.company}. Private video call with intern ${session.name}. Be warm, professional. Short replies.`,
+    techlead: `You are Marcus T., Tech Lead at ${session.role.company}. Private call with intern ${session.name}. Be concise and direct.`,
+    client: `You are Nadia R., Product Owner at ${session.role.company}. Private call with intern ${session.name}. Focus on deliverables. Short replies.`,
+  };
+
+  const sendMessage = async (text) => {
+    if (!text.trim() || isLoading) return;
+    setInputText(""); setIsLoading(true);
+    setMessages(prev => [...prev, { role: "user", text, name: session.name }]);
+    const history = messages.map(m => ({ role: m.role, content: m.text }));
+    history.push({ role: "user", content: text });
+    try {
+      const reply = await callClaude(history, sysPrompts[agentKey]);
+      setMessages(prev => [...prev, { role: "assistant", text: reply, name: agent.name }]);
+      speakText(reply, agentKey, () => setIsSpeaking(true), () => setIsSpeaking(false));
+    } catch (e) {
+      setMessages(prev => [...prev, { role: "assistant", text: "Sorry, connection glitch. Try again.", name: agent.name }]);
+    }
+    setIsLoading(false);
+  };
+
+  return (
+    <div style={{ display: "flex", height: "100%", flexDirection: "column", background: "#080810" }}>
+      <div style={{ padding: "12px 24px", background: "#0d0d14", borderBottom: "1px solid #1e1e2d", display: "flex", alignItems: "center", gap: 12 }}>
+        <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#22c55e", animation: "pulse 2s infinite" }} />
+        <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: ".72rem", color: "#22c55e" }}>Live · {formatDuration(callDuration)}</span>
+        <span style={{ fontFamily: "'Syne',sans-serif", fontWeight: 700, fontSize: ".9rem", color: "#e2e8f0", marginLeft: 8 }}>{agent.name}</span>
+        <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: ".65rem", color: agent.color }}>{agent.title}</span>
+        <button onClick={onHangUp} style={{ marginLeft: "auto", background: "#ef4444", border: "none", borderRadius: 20, padding: "6px 16px", color: "#fff", fontWeight: 700, fontSize: ".75rem", cursor: "pointer", fontFamily: "'IBM Plex Mono',monospace", letterSpacing: 1 }}>HANG UP</button>
+      </div>
+      <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
+        <div style={{ width: "38%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", borderRight: "1px solid #1e1e2d", background: `radial-gradient(ellipse at 50% 40%, ${agent.color}0d 0%, transparent 70%)` }}>
+          <div style={{ position: "relative", marginBottom: 20 }}>
+            <div style={{ width: 160, height: 160, borderRadius: "50%", background: `${agent.color}18`, border: `3px solid ${isSpeaking ? agent.color : agent.color + "33"}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "5.5rem", boxShadow: isSpeaking ? `0 0 60px ${agent.color}55` : "none", transition: "all 0.3s ease", animation: isSpeaking ? "pulse 0.8s infinite" : "none" }}>{agent.avatar}</div>
+            <div style={{ position: "absolute", bottom: 10, right: 10, width: 18, height: 18, borderRadius: "50%", background: "#22c55e", border: "3px solid #080810" }} />
+          </div>
+          <div style={{ display: "flex", gap: 4, alignItems: "flex-end", height: 28, marginBottom: 16 }}>
+            {[1, 2, 3, 4, 5, 4, 3, 2, 1].map((h, i) => (
+              <div key={i} style={{ width: 4, borderRadius: 2, background: agent.color, height: isSpeaking ? h * 5 : 3, opacity: isSpeaking ? 1 : 0.3, transition: "height 0.15s ease", animation: isSpeaking ? `pulse ${0.4 + i * 0.08}s ${i * 0.05}s infinite` : "none" }} />
+            ))}
+          </div>
+          <div style={{ fontFamily: "'Syne',sans-serif", fontWeight: 700, fontSize: "1.2rem", color: "#e2e8f0", marginBottom: 4 }}>{agent.name}</div>
+          <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: ".65rem", color: agent.color }}>{isSpeaking ? "🗣️ speaking..." : isLoading ? "🧠 thinking..." : "👂 listening"}</div>
+          <div style={{ marginTop: 28, background: "#111118", border: "1px solid #2d2d3d", borderRadius: 12, padding: "10px 18px", display: "flex", alignItems: "center", gap: 10 }}>
+            <span style={{ fontSize: "1.4rem" }}>🧑‍💻</span>
+            <div>
+              <div style={{ fontSize: ".82rem", fontWeight: 600, color: "#e2e8f0" }}>{session.name}</div>
+              <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: ".6rem", color: "#475569" }}>You · Mic {isListening ? "ON 🔴" : "off"}</div>
+            </div>
+          </div>
+        </div>
+        <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+          <div style={{ flex: 1, overflowY: "auto", padding: "20px 24px", display: "flex", flexDirection: "column", gap: 14 }}>
+            {messages.length === 0 && <div style={{ margin: "auto", textAlign: "center", color: "#475569", fontFamily: "'IBM Plex Mono',monospace", fontSize: ".78rem" }}>Call connected. Say something!</div>}
+            {messages.map((m, i) => (
+              <div key={i} className="slideIn" style={{ alignSelf: m.role === "user" ? "flex-end" : "flex-start", maxWidth: "80%", background: m.role === "user" ? "rgba(124,58,237,.15)" : `${agent.color}10`, border: `1px solid ${m.role === "user" ? "rgba(124,58,237,.3)" : agent.color + "33"}`, padding: "10px 14px", borderRadius: 14, borderBottomRightRadius: m.role === "user" ? 2 : 14, borderBottomLeftRadius: m.role !== "user" ? 2 : 14 }}>
+                <div style={{ fontSize: ".72rem", fontWeight: 600, color: m.role === "user" ? "#a78bfa" : agent.color, marginBottom: 4 }}>{m.name}</div>
+                <div style={{ fontSize: ".88rem", color: "#e2e8f0", lineHeight: 1.55 }}>{m.text}</div>
+              </div>
+            ))}
+            {isLoading && <div className="slideIn" style={{ alignSelf: "flex-start", background: `${agent.color}10`, border: `1px solid ${agent.color}33`, padding: "10px 16px", borderRadius: 14, borderBottomLeftRadius: 2 }}><div style={{ display: "flex", gap: 4 }}>{[0, 1, 2].map(i => <div key={i} style={{ width: 7, height: 7, borderRadius: "50%", background: agent.color, animation: `pulse 1.2s ${i * 0.2}s infinite` }} />)}</div></div>}
+            <div ref={chatEndRef} />
+          </div>
+          <div style={{ padding: "14px 18px", borderTop: "1px solid #1e1e2d", background: "#0d0d14", display: "flex", gap: 10, alignItems: "center" }}>
+            <button onClick={toggleMic} style={{ width: 44, height: 44, borderRadius: "50%", border: "none", flexShrink: 0, background: isListening ? "#ef4444" : "#1e1e2d", fontSize: "1.1rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: isListening ? "0 0 14px rgba(239,68,68,.5)" : "none", animation: isListening ? "pulse 1.5s infinite" : "none" }}>🎙️</button>
+            <input value={inputText} onChange={e => setInputText(e.target.value)} onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); sendMessage(inputText); } }} placeholder={isListening ? "Listening..." : `Message ${agent.name.split(" ")[0]}...`} style={{ flex: 1, height: 44, background: "#111118", border: "1px solid #2d2d3d", borderRadius: 10, padding: "0 14px", color: "#e2e8f0", fontSize: ".9rem", outline: "none", fontFamily: "'IBM Plex Sans',sans-serif" }} />
+            <button onClick={() => sendMessage(inputText)} disabled={!inputText.trim() || isLoading} style={{ height: 44, padding: "0 20px", background: inputText.trim() && !isLoading ? agent.color : "#1e1e2d", border: "none", borderRadius: 10, color: "#fff", fontWeight: 700, fontSize: ".85rem", cursor: inputText.trim() && !isLoading ? "pointer" : "not-allowed", transition: "all 0.2s" }}>Send</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── AVATARS ROOM (Contact List) ────────────────────────────────────────────────
+function AvatarsRoom({ session, agents }) {
+  const [activeCall, setActiveCall] = useState(null);
+  if (activeCall) {
+    return <PrivateCallScreen agentKey={activeCall} agent={agents[activeCall]} session={session} onHangUp={() => setActiveCall(null)} />;
+  }
+  const callableAgents = ["manager", "techlead", "client"];
+  return (
+    <div style={{ display: "flex", flexDirection: "column", height: "100%", background: "#080810", padding: 32, gap: 20 }}>
+      <div>
+        <div style={{ fontFamily: "'Syne',sans-serif", fontWeight: 800, fontSize: "1.4rem", marginBottom: 6 }}>📞 Team Calls</div>
+        <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: ".7rem", color: "#475569" }}>Select a team member to start a private voice + text call</div>
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 12, maxWidth: 480 }}>
+        {callableAgents.map(aKey => {
+          const a = agents[aKey];
+          return (
+            <div key={aKey} onClick={() => setActiveCall(aKey)}
+              style={{ display: "flex", alignItems: "center", gap: 16, padding: "20px 24px", background: "#111118", border: "1px solid #1e1e2d", borderRadius: 18, cursor: "pointer", transition: "all 0.2s" }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = a.color; e.currentTarget.style.background = `${a.color}0a`; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = "#1e1e2d"; e.currentTarget.style.background = "#111118"; }}>
+              <div style={{ width: 56, height: 56, borderRadius: "50%", background: `${a.color}20`, border: `2px solid ${a.color}55`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.7rem", flexShrink: 0 }}>{a.avatar}</div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 700, fontSize: "1rem", color: "#e2e8f0", marginBottom: 2 }}>{a.name}</div>
+                <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: ".65rem", color: a.color }}>{a.title}</div>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#22c55e", animation: "pulse 2s infinite" }} />
+                <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: ".62rem", color: "#22c55e" }}>online</span>
+                <div style={{ marginLeft: 10, background: a.color, borderRadius: 8, padding: "6px 14px", color: "#fff", fontFamily: "'IBM Plex Mono',monospace", fontSize: ".65rem", fontWeight: 700, letterSpacing: 1 }}>CALL</div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // ─── AI CONTENT GENERATION ────────────────────────────────────────────────────
 async function generateTasksForRole(roleName, companyName, durationMinutes, previousTasks = []) {
   try {
@@ -950,9 +1116,6 @@ Be direct, constructive, and human. Not a robot.` }],
         <div style={{ width: 1, height: 20, background: "#1e1e2d" }} />
         <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: ".7rem", color: "#475569" }}>{session.role.company}</div>
         <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 12 }}>
-          <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: ".78rem", color: timeColor, background: `${timeColor}15`, border: `1px solid ${timeColor}33`, padding: "3px 10px", borderRadius: 6 }}>
-            ⏱ {String(mins).padStart(2, "0")}:{String(secs).padStart(2, "0")}
-          </div>
           <button onClick={handleEndSession} disabled={loading} style={{ background: loading ? "#1e1e2d" : "#ef444422", border: "1px solid #ef444455", borderRadius: 8, color: "#ef4444", fontFamily: "'IBM Plex Mono',monospace", fontSize: ".65rem", padding: "5px 12px", cursor: "pointer", letterSpacing: 1 }}>
             {loading ? "EVALUATING..." : "END SESSION"}
           </button>
@@ -967,6 +1130,7 @@ Be direct, constructive, and human. Not a robot.` }],
             { id: "slack", icon: "💬", label: "Messages" },
             { id: "tasks", icon: "📋", label: "Tasks" },
             { id: "docs", icon: "📄", label: "Docs" },
+            { id: "avatars", icon: "👥", label: "Team Calls" },
           ].map(p => (
             <button key={p.id} onClick={() => setActivePanel(p.id)} title={p.label}
               style={{ width: 36, height: 36, borderRadius: 10, border: "none", background: activePanel === p.id ? "rgba(124,58,237,.25)" : "transparent", cursor: "pointer", fontSize: "1.1rem", display: "flex", alignItems: "center", justifyContent: "center", transition: "background .15s" }}>
@@ -1063,6 +1227,7 @@ Be direct, constructive, and human. Not a robot.` }],
             )}
             {activePanel === "tasks" && <TaskBoard tasks={tasks} onUpdate={(id, status) => setTasks(t => t.map(tk => tk.id === id ? { ...tk, status } : tk))} onSubmitRepo={handleSubmitWork} onRequestMore={handleRequestMoreTasks} generatingMore={generatingMore} />}
             {activePanel === "docs" && <DocsPanel docs={docs} />}
+            {activePanel === "avatars" && <AvatarsRoom session={session} agents={AGENTS} />}
           </div>
         </div>
       </div>
