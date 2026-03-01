@@ -1,9 +1,12 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { supabase } from "./supabase.js";
 
 // ─── CONSTANTS ────────────────────────────────────────────────────────────────
 const API_URL = "/api/mistral/v1/chat/completions";
 const API_KEY = import.meta.env.VITE_MISTRAL_API_KEY;
 const MODEL = "mistral-small-latest";
+const N8N_WEBHOOK_URL = import.meta.env.VITE_N8N_WEBHOOK_URL;
+const N8N_STUDENT_MESSAGE_WEBHOOK_URL = import.meta.env.VITE_N8N_STUDENT_MESSAGE_WEBHOOK_URL;
 
 // Role suggestions shown as placeholder hints
 const ROLE_EXAMPLES = [
@@ -854,6 +857,7 @@ function Workspace({ session, onEnd }) {
   const chatEndRef = useRef(null);
   const lastMessageTime = useRef(Date.now());
   const sessionRef = useRef(session);
+  const sessionIdRef = useRef(null); // Supabase session ID
 
   // ── channel helper ──
   const channelKey = (ch) => ch.replace(/[#@ ]/g, "_");
@@ -867,6 +871,14 @@ function Workspace({ session, onEnd }) {
       ...prev,
       [key]: [...(prev[key] || []), { role: "assistant", content: `[${agent.name}]: ${text}` }],
     }));
+    // Persist to Supabase
+    if (supabase && sessionIdRef.current) {
+      supabase.from("messages").insert({
+        session_id: sessionIdRef.current,
+        sender: agentKey,
+        content: text,
+      }).then(() => { }).catch(e => console.warn("Supabase msg save failed:", e));
+    }
     // Show notif if not in that channel
     setNotif({ agent: agentKey, preview: text.slice(0, 70) + (text.length > 70 ? "..." : "") });
     setTimeout(() => setNotif(null), 4200);
@@ -884,7 +896,10 @@ function Workspace({ session, onEnd }) {
   }, []);
 
   // ── Generate AI content + initial agent messages ──
+  const initRan = useRef(false);
   useEffect(() => {
+    if (initRan.current) return;
+    initRan.current = true;
     const init = async () => {
       // Generate tasks and docs in parallel
       const [generatedTasks, generatedDocs] = await Promise.all([
@@ -895,9 +910,39 @@ function Workspace({ session, onEnd }) {
       setDocs(generatedDocs);
       setContentReady(true);
 
+      let managerMsg = null;
+      try {
+        if (N8N_WEBHOOK_URL) {
+          console.log(`[n8n] Calling webhook at: ${N8N_WEBHOOK_URL}`);
+          const res = await fetch(N8N_WEBHOOK_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name: session.name, role: session.role.label, company: session.role.company }),
+          });
+          console.log(`[n8n] Response Status: ${res.status}`);
+
+          if (res.ok) {
+            const data = await res.json();
+            console.log(`[n8n] Response Data:`, data);
+
+            // Accommodate multiple response shapes from n8n
+            if (data.session_id || data.id) {
+              sessionIdRef.current = data.session_id || data.id;
+            }
+            if (data.first_message || data.message || data.content) {
+              managerMsg = data.first_message || data.message || data.content;
+            }
+          } else {
+            console.error(`[n8n] Request failed. HTTP ${res.status}`);
+          }
+        }
+      } catch (e) {
+        console.warn("n8n webhook failed, using fallback:", e);
+      }
+
       await new Promise(r => setTimeout(r, 800));
       addMessage("# general", "manager",
-        `Hey ${session.name}! 👋 Welcome to ${session.role.company}! Super excited to have you join the team as our new ${session.role.label}. I'm Sara, your manager. Drop a quick intro here when you get a chance — the team would love to meet you!`);
+        managerMsg || `Hey ${session.name}! 👋 Welcome to ${session.role.company}! Super excited to have you join the team as our new ${session.role.label}. I'm Sara, your manager. Drop a quick intro here when you get a chance — the team would love to meet you!`);
 
       await new Promise(r => setTimeout(r, 2800));
       addMessage("# engineering", "techlead",
@@ -969,10 +1014,65 @@ function Workspace({ session, onEnd }) {
 
     setAgentLoading(true);
     try {
-      const reply = await callClaude(newHistory, systemPrompts[respondingAgent]);
-      addMessage(activeChannel, respondingAgent, reply);
-      setConvoHistory(prev => ({ ...prev, [key]: [...newHistory, { role: "assistant", content: `[${agent.name}]: ${reply}` }] }));
+      let replyFound = false;
+
+      // 1. Try n8n student message webhook first
+      if (N8N_STUDENT_MESSAGE_WEBHOOK_URL && sessionIdRef.current) {
+        console.log(`[n8n] Calling student-message webhook at: ${N8N_STUDENT_MESSAGE_WEBHOOK_URL}`);
+        const res = await fetch(N8N_STUDENT_MESSAGE_WEBHOOK_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            session_id: sessionIdRef.current,
+            message: text,
+            agent: respondingAgent,
+            channel: activeChannel,
+            name: session.name,
+            role: session.role.label,
+            company: session.role.company
+          })
+        });
+
+        console.log(`[n8n] Student Message Response Status: ${res.status}`);
+
+        if (res.ok) {
+          const textVal = await res.text();
+          console.log(`[n8n] Student Message raw response: '${textVal}'`);
+          if (textVal && textVal.trim().length > 0) {
+            try {
+              const data = JSON.parse(textVal);
+              console.log(`[n8n] Student Message parsed Data:`, data);
+
+              if (data.reply || data.message || data.content) {
+                const webhookReply = data.reply || data.message || data.content;
+                const webhookSender = data.sender || respondingAgent;
+                addMessage(activeChannel, webhookSender, webhookReply);
+
+                // Map the resolved sender to the agent name
+                const resolvedAgent = AGENTS[webhookSender] || agent;
+                setConvoHistory(prev => ({ ...prev, [key]: [...newHistory, { role: "assistant", content: `[${resolvedAgent.name}]: ${webhookReply}` }] }));
+                replyFound = true;
+              }
+            } catch (jsonErr) {
+              console.error(`[n8n] Failed to parse JSON response:`, jsonErr);
+            }
+          } else {
+            console.warn(`[n8n] Webhook returned an empty response. Falling back to Mistral.`);
+          }
+        } else {
+          console.error(`[n8n] Student Message Request failed. HTTP ${res.status}`);
+        }
+      }
+
+      // 2. Fallback to local Mistral AI
+      if (!replyFound) {
+        console.log("[Fallback] Using Mistral AI for response...");
+        const reply = await callClaude(newHistory, systemPrompts[respondingAgent]);
+        addMessage(activeChannel, respondingAgent, reply);
+        setConvoHistory(prev => ({ ...prev, [key]: [...newHistory, { role: "assistant", content: `[${agent.name}]: ${reply}` }] }));
+      }
     } catch (e) {
+      console.error(e);
       addMessage(activeChannel, respondingAgent, "Sorry, connection issue. Try again.");
     }
     setAgentLoading(false);
@@ -980,6 +1080,20 @@ function Workspace({ session, onEnd }) {
 
   // ── Submit Work ──
   const handleSubmitWork = async (task, url) => {
+    const saveTaskToSupabase = async (taskToSave, newStatus) => {
+      if (!supabase || !sessionIdRef.current) return;
+      try {
+        await supabase.from("tasks").insert([{
+          session_id: sessionIdRef.current,
+          title: taskToSave.title,
+          type: taskToSave.type,
+          status: newStatus
+        }]);
+      } catch (e) {
+        console.error("Failed to save task to Supabase:", e);
+      }
+    };
+
     if (task.type === "non-technical") {
       try {
         addMessage("# general", "manager", "Checking your submission... give me a moment. 👀");
@@ -991,6 +1105,7 @@ function Workspace({ session, onEnd }) {
 
         addMessage("# general", "manager", `Looks good! Thanks for getting the **${task.title}** task done so quickly. Check your tasks board.`);
         setTasks(t => t.map(tk => tk.id === task.id ? { ...tk, status: "done" } : tk));
+        await saveTaskToSupabase(task, "done");
       } catch (err) {
         addMessage("# general", "manager", "Hmm, I couldn't access that link. Make sure the sharing settings are correct and try again!");
       }
@@ -1006,6 +1121,7 @@ function Workspace({ session, onEnd }) {
       const review = await reviewRepoCode(repoData, task.title, session.role.label);
       addMessage("# engineering", "techlead", "Code Review for: " + task.title + "\n\n" + review);
       setTasks(t => t.map(tk => tk.id === task.id ? { ...tk, status: "review" } : tk));
+      await saveTaskToSupabase(task, "review");
     } catch (err) {
       addMessage("# engineering", "techlead", "Couldn't access that repo. Make sure it's public and the URL is correct. Try again.");
     }
@@ -1065,6 +1181,18 @@ Be direct, constructive, and human. Not a robot.` }],
         "You are an experienced engineering manager evaluating an intern's performance. Be honest, specific, and helpful."
       );
       setEvalData(report);
+      // Save evaluation to Supabase
+      if (supabase && sessionIdRef.current) {
+        const getScore = (label) => { const m = report.match(new RegExp(`${label}:\\s*(\\d+)`)); return m ? parseInt(m[1]) : null; };
+        supabase.from("evaluations").insert({
+          session_id: sessionIdRef.current,
+          clarity: getScore("COMMUNICATION"),
+          prioritization: getScore("PRIORITIZATION"),
+          tone: getScore("PROFESSIONALISM"),
+          initiative: getScore("INITIATIVE"),
+          summary: report,
+        }).then(() => { }).catch(e => console.warn("Supabase eval save failed:", e));
+      }
     } catch (e) {
       setEvalData("COMMUNICATION: 65\nPRIORITIZATION: 60\nINITIATIVE: 55\nPROFESSIONALISM: 70\nDELIVERY: 60\n\nYou completed the simulation session. Review your behavioral patterns and keep practicing.");
     }
