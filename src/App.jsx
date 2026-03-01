@@ -145,7 +145,7 @@ function SetupScreen({ onStart }) {
   }, []);
 
   return (
-    <div style={{ minHeight: "100vh", background: "#f5f3ff", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 24, position: "relative", overflow: "auto" }}>
+    <div style={{ minHeight: "100vh", background: "#e9d5ff", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 24, position: "relative", overflow: "auto" }}>
       <style>{G}</style>
       {/* bg glow */}
       <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse 60% 40% at 50% 30%, rgba(124,58,237,.12) 0%, transparent 70%)", pointerEvents: "none" }} />
@@ -163,7 +163,7 @@ function SetupScreen({ onStart }) {
           </h1>
           <p style={{ color: "#475569", fontSize: "1rem", lineHeight: 1.7 }}>
             Your first job — before your first job.<br />
-            <span style={{ color: "#94a3b8" }}>Real internship simulation powered by AI agents.</span>
+            <span style={{ color: "#475569" }}>Real internship simulation powered by AI agents.</span>
           </p>
         </div>
 
@@ -175,7 +175,7 @@ function SetupScreen({ onStart }) {
               value={name}
               onChange={e => setName(e.target.value)}
               placeholder="What should your team call you?"
-              style={{ width: "100%", background: "#faf5ffffffff", border: "1px solid #c4b5fd", borderRadius: 10, color: "#0f172a", fontSize: ".95rem", padding: "12px 16px", outline: "none" }}
+              style={{ width: "100%", background: "#f3e8ff", border: "1px solid #c4b5fd", borderRadius: 10, color: "#0f172a", fontSize: ".95rem", padding: "12px 16px", outline: "none" }}
             />
           </div>
         </div>
@@ -188,20 +188,20 @@ function SetupScreen({ onStart }) {
               value={roleText}
               onChange={e => setRoleText(e.target.value)}
               placeholder={`e.g. ${ROLE_EXAMPLES[hintIdx]}`}
-              style={{ width: "100%", background: "#faf5ffffffff", border: "1px solid #c4b5fd", borderRadius: 10, color: "#0f172a", fontSize: ".95rem", padding: "12px 16px", outline: "none", marginBottom: 12 }}
+              style={{ width: "100%", background: "#f3e8ff", border: "1px solid #c4b5fd", borderRadius: 10, color: "#0f172a", fontSize: ".95rem", padding: "12px 16px", outline: "none", marginBottom: 12 }}
             />
-            <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: ".68rem", color: "#7c3aed", letterSpacing: 2, marginBottom: 12 }}>COMPANY NAME <span style={{ color: "#c4b5fd" }}>(OPTIONAL)</span></div>
+            <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: ".68rem", color: "#7c3aed", letterSpacing: 2, marginBottom: 12 }}>COMPANY NAME <span style={{ color: "#cbd5e1" }}>(OPTIONAL)</span></div>
             <input
               value={companyText}
               onChange={e => setCompanyText(e.target.value)}
               placeholder="Leave empty for a fictional startup"
-              style={{ width: "100%", background: "#faf5ffffffff", border: "1px solid #c4b5fd", borderRadius: 10, color: "#0f172a", fontSize: ".95rem", padding: "12px 16px", outline: "none" }}
+              style={{ width: "100%", background: "#f3e8ff", border: "1px solid #c4b5fd", borderRadius: 10, color: "#0f172a", fontSize: ".95rem", padding: "12px 16px", outline: "none" }}
             />
             {/* Quick suggestion chips */}
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 14 }}>
               {ROLE_EXAMPLES.slice(0, 6).map(r => (
                 <button key={r} onClick={() => setRoleText(r)}
-                  style={{ background: roleText === r ? "rgba(124,58,237,.2)" : "#faf5ffffffff", border: `1px solid ${roleText === r ? "#7c3aed" : "#c4b5fd"}`, borderRadius: 100, color: roleText === r ? "#a78bfa" : "#475569", fontFamily: "'IBM Plex Mono',monospace", fontSize: ".65rem", padding: "5px 12px", cursor: "pointer", transition: "all .15s" }}>
+                  style={{ background: roleText === r ? "rgba(124,58,237,.2)" : "#f3e8ff", border: `1px solid ${roleText === r ? "#7c3aed" : "#cbd5e1"}`, borderRadius: 100, color: roleText === r ? "#a78bfa" : "#475569", fontFamily: "'IBM Plex Mono',monospace", fontSize: ".65rem", padding: "5px 12px", cursor: "pointer", transition: "all .15s" }}>
                   {r}
                 </button>
               ))}
@@ -216,7 +216,7 @@ function SetupScreen({ onStart }) {
             onClick={handleStart}
             style={{
               background: canStart ? "linear-gradient(135deg,#7c3aed,#4f46e5)" : "#0f172a",
-              border: "none", borderRadius: 14, color: canStart ? "#faf5fffff" : "#475569",
+              border: "none", borderRadius: 14, color: canStart ? "#ffffff" : "#475569",
               fontFamily: "'IBM Plex Sans',sans-serif", fontWeight: 600, fontSize: "1rem",
               padding: "16px 48px", cursor: canStart ? "pointer" : "not-allowed",
               transition: "all .2s", boxShadow: canStart ? "0 8px 32px rgba(124,58,237,.35)" : "none",
@@ -249,7 +249,7 @@ function NotifToast({ notif }) {
       <div style={{ fontSize: "1.4rem", flexShrink: 0 }}>{agent.avatar}</div>
       <div>
         <div style={{ fontWeight: 600, fontSize: ".82rem", color: agent.color }}>{agent.name}</div>
-        <div style={{ fontSize: ".8rem", color: "#94a3b8", marginTop: 2, lineHeight: 1.5 }}>{notif.preview}</div>
+        <div style={{ fontSize: ".8rem", color: "#475569", marginTop: 2, lineHeight: 1.5 }}>{notif.preview}</div>
       </div>
       <div style={{ width: 8, height: 8, borderRadius: "50%", background: agent.color, flexShrink: 0, marginTop: 4, animation: "pulse 1.5s infinite" }} />
     </div>
@@ -266,8 +266,8 @@ function MeetingPopup({ meeting, onJoin, onDecline }) {
         <div style={{ fontFamily: "'Syne',sans-serif", fontWeight: 700, fontSize: "1.3rem", marginBottom: 8 }}>{meeting.title}</div>
         <div style={{ color: "#475569", fontSize: ".85rem", marginBottom: 24 }}>Starting in 30 seconds · {meeting.duration} min · with {meeting.host}</div>
         <div style={{ display: "flex", gap: 12, justifyContent: "center" }}>
-          <button onClick={onJoin} style={{ background: "#22c55e", border: "none", borderRadius: 10, color: "#faf5fffff", fontWeight: 600, padding: "11px 28px", cursor: "pointer" }}>Join Now</button>
-          <button onClick={onDecline} style={{ background: "#0f172a", border: "1px solid #c4b5fd", borderRadius: 10, color: "#94a3b8", padding: "11px 28px", cursor: "pointer" }}>Decline</button>
+          <button onClick={onJoin} style={{ background: "#22c55e", border: "none", borderRadius: 10, color: "#ffffff", fontWeight: 600, padding: "11px 28px", cursor: "pointer" }}>Join Now</button>
+          <button onClick={onDecline} style={{ background: "#0f172a", border: "1px solid #c4b5fd", borderRadius: 10, color: "#475569", padding: "11px 28px", cursor: "pointer" }}>Decline</button>
         </div>
       </div>
     </div>
@@ -393,17 +393,17 @@ function TaskCard({ task, colColor, cols, colMeta, onUpdate, onSubmitRepo }) {
         <Badge text={task.priority} color={task.priority === "HIGH" ? "#ef4444" : task.priority === "MED" ? "#f59e0b" : "#22c55e"} />
         {task.deadline && <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: ".6rem", color: "#475569" }}>⏰ {task.deadline}</span>}
         {submitted && <Badge text="SUBMITTED" color="#0ea5e9" />}
-        <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: ".58rem", color: "#c4b5fd", marginLeft: "auto" }}>{expanded ? "▲" : "▼"}</span>
+        <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: ".58rem", color: "#cbd5e1", marginLeft: "auto" }}>{expanded ? "▲" : "▼"}</span>
       </div>
       {expanded && task.description && (
-        <div style={{ marginTop: 10, padding: "10px 12px", background: "#faf5ffffffff", border: "1px solid #0f172a", borderRadius: 8 }}>
+        <div style={{ marginTop: 10, padding: "10px 12px", background: "#f3e8ff", border: "1px solid #0f172a", borderRadius: 8 }}>
           <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: ".6rem", color: "#7c3aed", letterSpacing: 1.5, marginBottom: 6 }}>DETAILS</div>
-          <pre style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: ".72rem", color: "#94a3b8", lineHeight: 1.7, whiteSpace: "pre-wrap", margin: 0 }}>{task.description}</pre>
+          <pre style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: ".72rem", color: "#475569", lineHeight: 1.7, whiteSpace: "pre-wrap", margin: 0 }}>{task.description}</pre>
         </div>
       )}
       {/* Work submission — only for technical and non-technical, not action */}
       {expanded && task.status !== "done" && task.type !== "action" && (
-        <div onClick={e => e.stopPropagation()} style={{ marginTop: 10, padding: "10px 12px", background: "#faf5ffffffff", border: "1px solid #0f172a", borderRadius: 8 }}>
+        <div onClick={e => e.stopPropagation()} style={{ marginTop: 10, padding: "10px 12px", background: "#f3e8ff", border: "1px solid #0f172a", borderRadius: 8 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
             <span style={{ fontSize: ".9rem" }}>🔗</span>
             <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: ".6rem", color: "#0ea5e9", letterSpacing: 1.5 }}>
@@ -424,7 +424,7 @@ function TaskCard({ task, colColor, cols, colMeta, onUpdate, onSubmitRepo }) {
               style={{
                 background: submitted ? "#0ea5e922" : submitting ? "#0f172a" : "#0ea5e9",
                 border: submitted ? "1px solid #0ea5e955" : "none", borderRadius: 6,
-                color: submitted ? "#0ea5e9" : "#faf5fffff", fontFamily: "'IBM Plex Mono',monospace",
+                color: submitted ? "#0ea5e9" : "#ffffff", fontFamily: "'IBM Plex Mono',monospace",
                 fontSize: ".65rem", padding: "6px 12px", cursor: submitting || submitted ? "default" : "pointer",
                 letterSpacing: .5, whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 6,
               }}>
@@ -441,7 +441,7 @@ function TaskCard({ task, colColor, cols, colMeta, onUpdate, onSubmitRepo }) {
           value={task.status}
           onClick={e => e.stopPropagation()}
           onChange={e => onUpdate(task.id, e.target.value)}
-          style={{ marginTop: 10, width: "100%", background: "#faf5ffffffff", border: "1px solid #c4b5fd", borderRadius: 6, color: "#94a3b8", fontSize: ".7rem", padding: "4px 8px", cursor: "pointer", outline: "none" }}>
+          style={{ marginTop: 10, width: "100%", background: "#f3e8ff", border: "1px solid #c4b5fd", borderRadius: 6, color: "#475569", fontSize: ".7rem", padding: "4px 8px", cursor: "pointer", outline: "none" }}>
           {cols.map(c => <option key={c} value={c} style={{ background: "#ede9fe" }}>{colMeta[c].label}</option>)}
         </select>
       )}
@@ -466,7 +466,7 @@ function TaskBoard({ tasks, onUpdate, onSubmitRepo, onRequestMore, generatingMor
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, padding: "0 4px" }}>
             <div style={{ width: 8, height: 8, borderRadius: "50%", background: colMeta[col].color }} />
             <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: ".68rem", color: "#475569", letterSpacing: 1 }}>{colMeta[col].label}</span>
-            <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: ".68rem", color: "#c4b5fd", marginLeft: "auto" }}>{tasks.filter(t => t.status === col).length}</span>
+            <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: ".68rem", color: "#cbd5e1", marginLeft: "auto" }}>{tasks.filter(t => t.status === col).length}</span>
           </div>
           {tasks.filter(t => t.status === col).map(task => (
             <TaskCard key={task.id} task={task} colColor={colMeta[col].color} cols={cols} colMeta={colMeta} onUpdate={onUpdate} onSubmitRepo={onSubmitRepo} />
@@ -479,13 +479,13 @@ function TaskBoard({ tasks, onUpdate, onSubmitRepo, onRequestMore, generatingMor
         <div style={{ gridColumn: "1 / -1", textAlign: "center", marginTop: 24, padding: 24, background: "rgba(0,255,136,.05)", border: "1px dashed rgba(0,255,136,.2)", borderRadius: 12 }}>
           <div style={{ fontSize: "1.5rem", marginBottom: 12 }}>🎉</div>
           <div style={{ fontFamily: "'Syne',sans-serif", fontWeight: 700, fontSize: "1.1rem", marginBottom: 8 }}>Board Cleared!</div>
-          <div style={{ color: "#94a3b8", fontSize: ".85rem", marginBottom: 16 }}>You finished all your tasks. Ready for the next challenge?</div>
+          <div style={{ color: "#475569", fontSize: ".85rem", marginBottom: 16 }}>You finished all your tasks. Ready for the next challenge?</div>
           <button
             onClick={onRequestMore}
             disabled={generatingMore}
             style={{
               background: generatingMore ? "#0f172a" : "linear-gradient(135deg, #00ff88, #0ea5e9)",
-              border: "none", borderRadius: 8, color: generatingMore ? "#94a3b8" : "#f5f3ff",
+              border: "none", borderRadius: 8, color: generatingMore ? "#475569" : "#e9d5ff",
               fontFamily: "'IBM Plex Sans',sans-serif", fontWeight: 600, fontSize: ".9rem",
               padding: "10px 24px", cursor: generatingMore ? "default" : "pointer",
               display: "inline-flex", alignItems: "center", gap: 8
@@ -518,7 +518,7 @@ function DocsPanel({ docs: dynamicDocs, loadingDocs }) {
       </div>
       <div style={{ flex: 1, padding: 20, overflowY: "auto" }}>
         <div style={{ fontFamily: "'Syne',sans-serif", fontWeight: 700, fontSize: "1rem", marginBottom: 16, color: "#0f172a" }}>{docs[active].title}</div>
-        <pre style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: ".78rem", color: "#94a3b8", lineHeight: 1.8, whiteSpace: "pre-wrap" }}>{docs[active].content}</pre>
+        <pre style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: ".78rem", color: "#475569", lineHeight: 1.8, whiteSpace: "pre-wrap" }}>{docs[active].content}</pre>
       </div>
     </div>
   );
@@ -551,7 +551,7 @@ function EvalReport({ data, session, onRestart }) {
   const verdict = getVerdict(overall);
 
   return (
-    <div style={{ minHeight: "100vh", background: "#f5f3ff", display: "flex", alignItems: "center", justifyContent: "center", padding: 24, overflow: "auto" }}>
+    <div style={{ minHeight: "100vh", background: "#e9d5ff", display: "flex", alignItems: "center", justifyContent: "center", padding: 24, overflow: "auto" }}>
       <div style={{ maxWidth: 700, width: "100%" }} className="fadeUp">
         {/* Header */}
         <div style={{ textAlign: "center", marginBottom: 40 }}>
@@ -566,7 +566,7 @@ function EvalReport({ data, session, onRestart }) {
           <div style={{ fontSize: "2.5rem", marginBottom: 8 }}>{verdict.emoji}</div>
           <div style={{ fontFamily: "'Syne',sans-serif", fontWeight: 800, fontSize: "3rem", color: verdict.color, marginBottom: 8 }}>{Math.round(overall)}</div>
           <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: ".75rem", color: verdict.color, letterSpacing: 2 }}>{verdict.label.toUpperCase()}</div>
-          <div style={{ color: "#475569", fontSize: ".82rem", marginTop: 8 }}>Simulated as: <span style={{ color: "#94a3b8" }}>{session.name}</span> @ {session.role?.company}</div>
+          <div style={{ color: "#475569", fontSize: ".82rem", marginTop: 8 }}>Simulated as: <span style={{ color: "#475569" }}>{session.name}</span> @ {session.role?.company}</div>
         </div>
 
         {/* Metric bars */}
@@ -577,7 +577,7 @@ function EvalReport({ data, session, onRestart }) {
             return (
               <div key={m.key} style={{ marginBottom: 16 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-                  <span style={{ fontSize: ".82rem", color: "#94a3b8" }}>{m.label}</span>
+                  <span style={{ fontSize: ".82rem", color: "#475569" }}>{m.label}</span>
                   <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: ".78rem", color: m.color, fontWeight: 600 }}>{val}/100</span>
                 </div>
                 <div style={{ background: "#0f172a", borderRadius: 100, height: 6, overflow: "hidden" }}>
@@ -591,7 +591,7 @@ function EvalReport({ data, session, onRestart }) {
         {/* AI Feedback */}
         <div style={{ background: "#ede9fe", border: "1px solid #0f172a", borderLeft: "3px solid #7c3aed", borderRadius: 16, padding: 24, marginBottom: 20 }}>
           <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: ".68rem", color: "#7c3aed", letterSpacing: 2, marginBottom: 14 }}>MANAGER'S NOTES</div>
-          <div style={{ fontSize: ".85rem", color: "#94a3b8", lineHeight: 1.8, whiteSpace: "pre-wrap" }}>{data}</div>
+          <div style={{ fontSize: ".85rem", color: "#475569", lineHeight: 1.8, whiteSpace: "pre-wrap" }}>{data}</div>
         </div>
 
         {/* Badge */}
@@ -604,7 +604,7 @@ function EvalReport({ data, session, onRestart }) {
         </div>
 
         <div style={{ display: "flex", gap: 12, justifyContent: "center" }}>
-          <button onClick={onRestart} style={{ background: "#7c3aed", border: "none", borderRadius: 12, color: "#faf5fffff", fontWeight: 600, padding: "14px 36px", cursor: "pointer", fontSize: ".9rem" }}>
+          <button onClick={onRestart} style={{ background: "#7c3aed", border: "none", borderRadius: 12, color: "#ffffff", fontWeight: 600, padding: "14px 36px", cursor: "pointer", fontSize: ".9rem" }}>
             🔄 Try Another Role
           </button>
         </div>
@@ -671,13 +671,13 @@ function PrivateCallScreen({ agentKey, agent, session, onHangUp }) {
   };
 
   return (
-    <div style={{ display: "flex", height: "100%", flexDirection: "column", background: "#f5f3ff" }}>
-      <div style={{ padding: "12px 24px", background: "#faf5ffffffff", borderBottom: "1px solid #0f172a", display: "flex", alignItems: "center", gap: 12 }}>
+    <div style={{ display: "flex", height: "100%", flexDirection: "column", background: "#e9d5ff" }}>
+      <div style={{ padding: "12px 24px", background: "#f3e8ff", borderBottom: "1px solid #0f172a", display: "flex", alignItems: "center", gap: 12 }}>
         <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#22c55e", animation: "pulse 2s infinite" }} />
         <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: ".72rem", color: "#22c55e" }}>Live · {formatDuration(callDuration)}</span>
         <span style={{ fontFamily: "'Syne',sans-serif", fontWeight: 700, fontSize: ".9rem", color: "#0f172a", marginLeft: 8 }}>{agent.name}</span>
         <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: ".65rem", color: agent.color }}>{agent.title}</span>
-        <button onClick={onHangUp} style={{ marginLeft: "auto", background: "#ef4444", border: "none", borderRadius: 20, padding: "6px 16px", color: "#faf5fffff", fontWeight: 700, fontSize: ".75rem", cursor: "pointer", fontFamily: "'IBM Plex Mono',monospace", letterSpacing: 1 }}>HANG UP</button>
+        <button onClick={onHangUp} style={{ marginLeft: "auto", background: "#ef4444", border: "none", borderRadius: 20, padding: "6px 16px", color: "#ffffff", fontWeight: 700, fontSize: ".75rem", cursor: "pointer", fontFamily: "'IBM Plex Mono',monospace", letterSpacing: 1 }}>HANG UP</button>
       </div>
       <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
         <div style={{ width: "38%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", borderRight: "1px solid #0f172a", background: `radial-gradient(ellipse at 50% 40%, ${agent.color}0d 0%, transparent 70%)` }}>
@@ -712,10 +712,10 @@ function PrivateCallScreen({ agentKey, agent, session, onHangUp }) {
             {isLoading && <div className="slideIn" style={{ alignSelf: "flex-start", background: `${agent.color}10`, border: `1px solid ${agent.color}33`, padding: "10px 16px", borderRadius: 14, borderBottomLeftRadius: 2 }}><div style={{ display: "flex", gap: 4 }}>{[0, 1, 2].map(i => <div key={i} style={{ width: 7, height: 7, borderRadius: "50%", background: agent.color, animation: `pulse 1.2s ${i * 0.2}s infinite` }} />)}</div></div>}
             <div ref={chatEndRef} />
           </div>
-          <div style={{ padding: "14px 18px", borderTop: "1px solid #0f172a", background: "#faf5ffffffff", display: "flex", gap: 10, alignItems: "center" }}>
+          <div style={{ padding: "14px 18px", borderTop: "1px solid #0f172a", background: "#f3e8ff", display: "flex", gap: 10, alignItems: "center" }}>
             <button onClick={toggleMic} style={{ width: 44, height: 44, borderRadius: "50%", border: "none", flexShrink: 0, background: isListening ? "#ef4444" : "#0f172a", fontSize: "1.1rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: isListening ? "0 0 14px rgba(239,68,68,.5)" : "none", animation: isListening ? "pulse 1.5s infinite" : "none" }}>🎙️</button>
             <input value={inputText} onChange={e => setInputText(e.target.value)} onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); sendMessage(inputText); } }} placeholder={isListening ? "Listening..." : `Message ${agent.name.split(" ")[0]}...`} style={{ flex: 1, height: 44, background: "#ede9fe", border: "1px solid #c4b5fd", borderRadius: 10, padding: "0 14px", color: "#0f172a", fontSize: ".9rem", outline: "none", fontFamily: "'IBM Plex Sans',sans-serif" }} />
-            <button onClick={() => sendMessage(inputText)} disabled={!inputText.trim() || isLoading} style={{ height: 44, padding: "0 20px", background: inputText.trim() && !isLoading ? agent.color : "#0f172a", border: "none", borderRadius: 10, color: "#faf5fffff", fontWeight: 700, fontSize: ".85rem", cursor: inputText.trim() && !isLoading ? "pointer" : "not-allowed", transition: "all 0.2s" }}>Send</button>
+            <button onClick={() => sendMessage(inputText)} disabled={!inputText.trim() || isLoading} style={{ height: 44, padding: "0 20px", background: inputText.trim() && !isLoading ? agent.color : "#0f172a", border: "none", borderRadius: 10, color: "#ffffff", fontWeight: 700, fontSize: ".85rem", cursor: inputText.trim() && !isLoading ? "pointer" : "not-allowed", transition: "all 0.2s" }}>Send</button>
           </div>
         </div>
       </div>
@@ -730,7 +730,7 @@ function AvatarsRoom({ session, agents, activeCall, onCallTap, onHangUp }) {
   }
   const callableAgents = ["manager", "techlead", "client"];
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100%", background: "#f5f3ff", padding: 32, gap: 20 }}>
+    <div style={{ display: "flex", flexDirection: "column", height: "100%", background: "#e9d5ff", padding: 32, gap: 20 }}>
       <div>
         <div style={{ fontFamily: "'Syne',sans-serif", fontWeight: 800, fontSize: "1.4rem", marginBottom: 6 }}>📞 Team Calls</div>
         <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: ".7rem", color: "#475569" }}>Select a team member to start a private voice + text call</div>
@@ -751,7 +751,7 @@ function AvatarsRoom({ session, agents, activeCall, onCallTap, onHangUp }) {
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#22c55e", animation: "pulse 2s infinite" }} />
                 <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: ".62rem", color: "#22c55e" }}>online</span>
-                <div style={{ marginLeft: 10, background: a.color, borderRadius: 8, padding: "6px 14px", color: "#faf5fffff", fontFamily: "'IBM Plex Mono',monospace", fontSize: ".65rem", fontWeight: 700, letterSpacing: 1 }}>CALL</div>
+                <div style={{ marginLeft: 10, background: a.color, borderRadius: 8, padding: "6px 14px", color: "#ffffff", fontFamily: "'IBM Plex Mono',monospace", fontSize: ".65rem", fontWeight: 700, letterSpacing: 1 }}>CALL</div>
               </div>
             </div>
           );
@@ -1204,7 +1204,7 @@ Be direct, constructive, and human. Not a robot.` }],
   // Loading screen while AI generates content
   if (!contentReady) {
     return (
-      <div style={{ height: "100vh", background: "#f5f3ff", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 24 }}>
+      <div style={{ height: "100vh", background: "#e9d5ff", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 24 }}>
         <style>{G}</style>
         <Spinner size={40} color="#7c3aed" />
         <div style={{ fontFamily: "'Syne',sans-serif", fontWeight: 700, fontSize: "1.3rem" }}>
@@ -1233,13 +1233,13 @@ Be direct, constructive, and human. Not a robot.` }],
   const currentMsgs = messages[channelKey(activeChannel)] || [];
 
   return (
-    <div style={{ height: "100vh", display: "flex", flexDirection: "column", background: "#f5f3ff", overflow: "hidden" }}>
+    <div style={{ height: "100vh", display: "flex", flexDirection: "column", background: "#e9d5ff", overflow: "hidden" }}>
       <style>{G}</style>
       {notif && <NotifToast notif={notif} />}
       {meeting && <MeetingPopup meeting={meeting} onJoin={() => { setMeeting(null); setActivePanel("avatars"); setActiveCall("manager"); addMessage("# general", "manager", "Good to see you at standup! Quick update: sprint ends tomorrow. Please move your tasks to 'In Review' before EOD. Any blockers?"); }} onDecline={() => { setMeeting(null); addMessage("# general", "manager", "I noticed you missed standup. Please send an async update in this channel instead. It's important to keep the team in the loop."); }} />}
 
       {/* Top bar */}
-      <div style={{ height: 44, background: "#faf5ffffffff", borderBottom: "1px solid #0f172a", display: "flex", alignItems: "center", padding: "0 16px", gap: 16, flexShrink: 0 }}>
+      <div style={{ height: 44, background: "#f3e8ff", borderBottom: "1px solid #0f172a", display: "flex", alignItems: "center", padding: "0 16px", gap: 16, flexShrink: 0 }}>
         <div style={{ fontFamily: "'Syne',sans-serif", fontWeight: 700, fontSize: ".95rem" }}>Sta<span style={{ color: "#7c3aed" }}>gi</span></div>
         <div style={{ width: 1, height: 20, background: "#0f172a" }} />
         <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: ".7rem", color: "#475569" }}>{session.role.company}</div>
@@ -1253,7 +1253,7 @@ Be direct, constructive, and human. Not a robot.` }],
       {/* Main layout */}
       <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
         {/* Left sidebar */}
-        <div style={{ width: 52, background: "#faf5ffffffff", borderRight: "1px solid #0f172a", display: "flex", flexDirection: "column", alignItems: "center", paddingTop: 12, gap: 4, flexShrink: 0 }}>
+        <div style={{ width: 52, background: "#f3e8ff", borderRight: "1px solid #0f172a", display: "flex", flexDirection: "column", alignItems: "center", paddingTop: 12, gap: 4, flexShrink: 0 }}>
           {[
             { id: "slack", icon: "💬", label: "Messages" },
             { id: "tasks", icon: "📋", label: "Tasks" },
@@ -1269,26 +1269,26 @@ Be direct, constructive, and human. Not a robot.` }],
 
         {/* Slack channel sidebar */}
         {activePanel === "slack" && (
-          <div style={{ width: 180, background: "#faf5ffffffff", borderRight: "1px solid #0f172a", padding: "12px 8px", flexShrink: 0, overflowY: "auto" }}>
-            <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: ".6rem", color: "#c4b5fd", letterSpacing: 2, padding: "4px 8px", marginBottom: 6 }}>CHANNELS</div>
+          <div style={{ width: 180, background: "#f3e8ff", borderRight: "1px solid #0f172a", padding: "12px 8px", flexShrink: 0, overflowY: "auto" }}>
+            <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: ".6rem", color: "#64748b", letterSpacing: 2, padding: "4px 8px", marginBottom: 6 }}>CHANNELS</div>
             {CHANNELS.map(ch => {
               const key = channelKey(ch);
               const unread = (messages[key] || []).filter(m => m.agent !== "user").length;
               return (
                 <div key={ch} onClick={() => setActiveChannel(ch)}
-                  style={{ padding: "7px 10px", borderRadius: 8, cursor: "pointer", fontSize: ".8rem", color: activeChannel === ch ? "#0f172a" : "#475569", background: activeChannel === ch ? "#0f172a" : "transparent", marginBottom: 2, display: "flex", justifyContent: "space-between", alignItems: "center", transition: "all .15s" }}>
+                  style={{ padding: "7px 10px", borderRadius: 8, cursor: "pointer", fontSize: ".8rem", color: activeChannel === ch ? "#ffffff" : "#1e293b", background: activeChannel === ch ? "#0f172a" : "transparent", marginBottom: 2, display: "flex", justifyContent: "space-between", alignItems: "center", transition: "all .15s" }}>
                   <span>{ch}</span>
-                  {unread > 0 && <span style={{ background: "#7c3aed", color: "#faf5fffff", borderRadius: 100, fontSize: ".6rem", padding: "1px 6px", fontFamily: "'IBM Plex Mono',monospace" }}>{unread}</span>}
+                  {unread > 0 && <span style={{ background: "#7c3aed", color: "#ffffff", borderRadius: 100, fontSize: ".6rem", padding: "1px 6px", fontFamily: "'IBM Plex Mono',monospace" }}>{unread}</span>}
                 </div>
               );
             })}
-            <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: ".6rem", color: "#c4b5fd", letterSpacing: 2, padding: "4px 8px", marginTop: 12, marginBottom: 6 }}>TEAM</div>
+            <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: ".6rem", color: "#64748b", letterSpacing: 2, padding: "4px 8px", marginTop: 12, marginBottom: 6 }}>TEAM</div>
             {Object.values(AGENTS).map(a => (
               <div key={a.name} style={{ padding: "7px 10px", display: "flex", alignItems: "center", gap: 8, fontSize: ".78rem", color: "#475569" }}>
                 <span>{a.avatar}</span>
                 <div>
-                  <div style={{ color: "#475569", fontSize: ".75rem" }}>{a.name.split(" ")[0]}</div>
-                  <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: ".6rem", color: "#c4b5fd" }}>{a.title.split(" ")[0]}</div>
+                  <div style={{ color: "#1e293b", fontSize: ".75rem" }}>{a.name.split(" ")[0]}</div>
+                  <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: ".6rem", color: "#64748b" }}>{a.title.split(" ")[0]}</div>
                 </div>
               </div>
             ))}
@@ -1312,7 +1312,7 @@ Be direct, constructive, and human. Not a robot.` }],
               <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
                 <div style={{ flex: 1, overflowY: "auto", padding: "16px 20px" }}>
                   {currentMsgs.length === 0 && (
-                    <div style={{ color: "#c4b5fd", fontSize: ".82rem", fontFamily: "'IBM Plex Mono',monospace", padding: "20px 0" }}>No messages yet in {activeChannel}</div>
+                    <div style={{ color: "#cbd5e1", fontSize: ".82rem", fontFamily: "'IBM Plex Mono',monospace", padding: "20px 0" }}>No messages yet in {activeChannel}</div>
                   )}
                   {currentMsgs.map((m, i) => (
                     <div key={i} className="slideIn" style={{ display: "flex", gap: 12, marginBottom: 18, alignItems: "flex-start" }}>
@@ -1322,9 +1322,9 @@ Be direct, constructive, and human. Not a robot.` }],
                       <div>
                         <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 4 }}>
                           <span style={{ fontWeight: 600, fontSize: ".82rem", color: m.agent === "user" ? "#00ff88" : m.color }}>{m.name}</span>
-                          <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: ".6rem", color: "#c4b5fd" }}>{m.time}</span>
+                          <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: ".6rem", color: "#cbd5e1" }}>{m.time}</span>
                         </div>
-                        <div style={{ fontSize: ".85rem", color: "#94a3b8", lineHeight: 1.65, whiteSpace: "pre-wrap" }}>{m.text}</div>
+                        <div style={{ fontSize: ".85rem", color: "#475569", lineHeight: 1.65, whiteSpace: "pre-wrap" }}>{m.text}</div>
                       </div>
                     </div>
                   ))}
@@ -1347,8 +1347,8 @@ Be direct, constructive, and human. Not a robot.` }],
                     style={{ flex: 1, background: "#ede9fe", border: "1px solid #c4b5fd", borderRadius: 10, color: "#0f172a", fontSize: ".85rem", padding: "10px 14px", outline: "none", resize: "none", minHeight: 42, maxHeight: 120, fontFamily: "'IBM Plex Sans',sans-serif" }}
                   />
                   <button onClick={sendMessage} disabled={agentLoading}
-                    style={{ background: "#7c3aed", border: "none", borderRadius: 10, color: "#faf5fffff", padding: "0 18px", cursor: "pointer", fontWeight: 600, fontSize: ".85rem", flexShrink: 0 }}>
-                    {agentLoading ? <Spinner size={14} color="#faf5fffff" /> : "Send"}
+                    style={{ background: "#7c3aed", border: "none", borderRadius: 10, color: "#ffffff", padding: "0 18px", cursor: "pointer", fontWeight: 600, fontSize: ".85rem", flexShrink: 0 }}>
+                    {agentLoading ? <Spinner size={14} color="#ffffff" /> : "Send"}
                   </button>
                 </div>
               </div>
