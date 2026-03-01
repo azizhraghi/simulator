@@ -1,0 +1,8 @@
+{
+    "rewrites": [
+        {
+            "source": "/api/mistral/:match*",
+            "destination": "https://api.mistral.ai/:match*"
+        }
+    ]
+}
