@@ -381,18 +381,20 @@ function TaskCard({ task, colColor, cols, colMeta, onUpdate, onSubmitRepo }) {
           <pre style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: ".72rem", color: "#94a3b8", lineHeight: 1.7, whiteSpace: "pre-wrap", margin: 0 }}>{task.description}</pre>
         </div>
       )}
-      {/* GitHub repo submission */}
-      {expanded && task.status !== "done" && (
+      {/* Work submission — only for technical and non-technical, not action */}
+      {expanded && task.status !== "done" && task.type !== "action" && (
         <div onClick={e => e.stopPropagation()} style={{ marginTop: 10, padding: "10px 12px", background: "#0d0d14", border: "1px solid #1e1e2d", borderRadius: 8 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
             <span style={{ fontSize: ".9rem" }}>🔗</span>
-            <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: ".6rem", color: "#0ea5e9", letterSpacing: 1.5 }}>SUBMIT GITHUB REPO</div>
+            <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: ".6rem", color: "#0ea5e9", letterSpacing: 1.5 }}>
+              {task.type === "non-technical" ? "SUBMIT WORK LINK" : "SUBMIT GITHUB REPO"}
+            </div>
           </div>
           <div style={{ display: "flex", gap: 8 }}>
             <input
               value={repoUrl}
               onChange={e => setRepoUrl(e.target.value)}
-              placeholder="https://github.com/user/repo"
+              placeholder={task.type === "non-technical" ? "https://docs.google.com/..." : "https://github.com/user/repo"}
               disabled={submitting || submitted}
               style={{ flex: 1, background: "#111118", border: "1px solid #2d2d3d", borderRadius: 6, color: "#e2e8f0", fontFamily: "'IBM Plex Mono',monospace", fontSize: ".72rem", padding: "6px 10px", outline: "none" }}
             />
@@ -409,7 +411,9 @@ function TaskCard({ task, colColor, cols, colMeta, onUpdate, onSubmitRepo }) {
               {submitted ? "✅ Reviewed" : submitting ? <><Spinner size={10} color="#0ea5e9" /> Reviewing...</> : "🚀 Submit"}
             </button>
           </div>
-          {submitted && <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: ".62rem", color: "#475569", marginTop: 6 }}>Check #engineering for Marcus's review</div>}
+          {submitted && <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: ".62rem", color: "#475569", marginTop: 6 }}>
+            {task.type === "non-technical" ? "Check #general for Sara's review" : "Check #engineering for Marcus's review"}
+          </div>}
         </div>
       )}
       {task.status !== "done" && (
@@ -426,7 +430,7 @@ function TaskCard({ task, colColor, cols, colMeta, onUpdate, onSubmitRepo }) {
 }
 
 // ─── TASK BOARD ───────────────────────────────────────────────────────────────
-function TaskBoard({ tasks, onUpdate, onSubmitRepo }) {
+function TaskBoard({ tasks, onUpdate, onSubmitRepo, onRequestMore, generatingMore }) {
   const cols = ["todo", "in_progress", "review", "done"];
   const colMeta = {
     todo: { label: "To Do", color: "#475569" },
@@ -449,6 +453,27 @@ function TaskBoard({ tasks, onUpdate, onSubmitRepo }) {
           ))}
         </div>
       ))}
+
+      {/* Request More Tasks Button (shows when all tasks are done) */}
+      {tasks.length > 0 && tasks.every(t => t.status === "done") && (
+        <div style={{ gridColumn: "1 / -1", textAlign: "center", marginTop: 24, padding: 24, background: "rgba(0,255,136,.05)", border: "1px dashed rgba(0,255,136,.2)", borderRadius: 12 }}>
+          <div style={{ fontSize: "1.5rem", marginBottom: 12 }}>🎉</div>
+          <div style={{ fontFamily: "'Syne',sans-serif", fontWeight: 700, fontSize: "1.1rem", marginBottom: 8 }}>Board Cleared!</div>
+          <div style={{ color: "#94a3b8", fontSize: ".85rem", marginBottom: 16 }}>You finished all your tasks. Ready for the next challenge?</div>
+          <button
+            onClick={onRequestMore}
+            disabled={generatingMore}
+            style={{
+              background: generatingMore ? "#1e1e2d" : "linear-gradient(135deg, #00ff88, #0ea5e9)",
+              border: "none", borderRadius: 8, color: generatingMore ? "#94a3b8" : "#0a0a0f",
+              fontFamily: "'IBM Plex Sans',sans-serif", fontWeight: 600, fontSize: ".9rem",
+              padding: "10px 24px", cursor: generatingMore ? "default" : "pointer",
+              display: "inline-flex", alignItems: "center", gap: 8
+            }}>
+            {generatingMore ? <><Spinner size={14} color="#0ea5e9" /> Generating tasks...</> : "🚀 Request More Tasks"}
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -569,40 +594,42 @@ function EvalReport({ data, session, onRestart }) {
 }
 
 // ─── AI CONTENT GENERATION ────────────────────────────────────────────────────
-async function generateTasksForRole(roleName, companyName, durationMinutes) {
+async function generateTasksForRole(roleName, companyName, durationMinutes, previousTasks = []) {
   try {
+    const isFollowUp = previousTasks.length > 0;
+    const prevContext = isFollowUp
+      ? `The intern just completed these tasks:\n${previousTasks.map(t => `- ${t.title}`).join("\n")}\n\nGenerate 4-5 NEW follow-up tasks. Make sure they are a MIX of technical tasks, communication/collaboration tasks (e.g., messaging the team, reviewing a PR, writing an update), and documentation/planning tasks.`
+      : `Generate 5-7 realistic internship tasks for a first-day intern. Include reading docs, introducing themselves, and early role-specific tasks.`;
+
     const result = await callClaude(
       [{
-        role: "user", content: `Generate 5-7 realistic internship tasks for a "${roleName}" at a company called "${companyName}". Session is ${durationMinutes} minutes.
+        role: "user", content: `Generate internship tasks for a "${roleName}" at a company called "${companyName}". Session is ${durationMinutes} minutes.
+
+${prevContext}
 
 Return ONLY a valid JSON array. Each task must have:
-- "id": number (1-7)
 - "title": short task title (max 8 words)
 - "description": detailed multi-line description of what exactly to do (2-4 lines, use \n for newlines)
 - "priority": "HIGH" or "MED" or "LOW"
 - "deadline": "Today" or "EOD" or a time like "10:00 AM"
+- "type": "technical" (coding tasks needing a GitHub repo), "non-technical" (writing/docs needing a Google Docs or link), or "action" (tasks like reading docs, introducing yourself, attending meetings — no submission needed)
 - "status": "todo"
-
-Make them realistic for a first-day intern. Include:
-1. Reading onboarding docs (always first, HIGH priority)
-2. Introducing themselves to the team
-3. 2-3 role-specific tasks relevant to a ${roleName}
-4. Attending a standup meeting
-5. At least one task that tests initiative
 
 Respond with ONLY the JSON array, no markdown, no explanation.` }],
       "You are a task generator for an internship simulator. Output ONLY valid JSON arrays. No markdown code blocks, no explanation."
     );
     const cleaned = result.replace(/```json?\n?/g, "").replace(/```/g, "").trim();
-    return JSON.parse(cleaned);
+    const parsed = JSON.parse(cleaned);
+
+    // Assign unique IDs
+    return parsed.map((t, i) => ({ ...t, type: t.type || "technical", id: Date.now() + i }));
   } catch (e) {
     console.error("Failed to generate tasks:", e);
+    const fallbackId = Date.now();
     return [
-      { id: 1, title: "Read the onboarding docs", status: "todo", priority: "HIGH", deadline: "Today", description: `Read all documents in the Docs panel to understand your role as ${roleName} at ${companyName}.` },
-      { id: 2, title: "Introduce yourself in #general", status: "todo", priority: "MED", deadline: "Today", description: "Post a brief introduction in #general. Include your name, role, and what you're excited about." },
-      { id: 3, title: "Message your tech lead", status: "todo", priority: "HIGH", deadline: "Today", description: "Reach out to Marcus in #engineering to confirm you've read the docs and are set up." },
-      { id: 4, title: "Review open tasks on the board", status: "todo", priority: "MED", deadline: "EOD", description: "Review all tasks and message Sara with your prioritized plan." },
-      { id: 5, title: "Attend the standup meeting", status: "todo", priority: "HIGH", deadline: "10:00 AM", description: "A meeting popup will appear. Join it and share your status update." },
+      { id: fallbackId, title: "Review advanced codebase", status: "todo", type: "technical", priority: "HIGH", deadline: "Today", description: `Review the deeper architecture for your role as ${roleName} at ${companyName}.` },
+      { id: fallbackId + 1, title: "Read company handbook", status: "todo", type: "action", priority: "HIGH", deadline: "Today", description: "Go to the Docs panel and read the onboarding documents carefully." },
+      { id: fallbackId + 2, title: "Draft technical proposal", status: "todo", type: "non-technical", priority: "MED", deadline: "Tomorrow", description: "Write a short proposal for the next big feature we should build." },
     ];
   }
 }
@@ -649,6 +676,7 @@ function Workspace({ session, onEnd }) {
   const [tasks, setTasks] = useState([]);
   const [docs, setDocs] = useState([]);
   const [contentReady, setContentReady] = useState(false);
+  const [generatingMore, setGeneratingMore] = useState(false);
   const [convoHistory, setConvoHistory] = useState({});
   const [loading, setLoading] = useState(false);
   const [notif, setNotif] = useState(null);
@@ -784,8 +812,26 @@ function Workspace({ session, onEnd }) {
     setAgentLoading(false);
   };
 
-  // ── Submit GitHub Repo for review ──
-  const handleSubmitRepo = async (task, url) => {
+  // ── Submit Work ──
+  const handleSubmitWork = async (task, url) => {
+    if (task.type === "non-technical") {
+      try {
+        addMessage("# general", "manager", "Checking your submission... give me a moment. 👀");
+        setActivePanel("slack");
+        setActiveChannel("# general");
+
+        // Simulating manager review time
+        await new Promise(r => setTimeout(r, 2000));
+
+        addMessage("# general", "manager", `Looks good! Thanks for getting the **${task.title}** task done so quickly. Check your tasks board.`);
+        setTasks(t => t.map(tk => tk.id === task.id ? { ...tk, status: "done" } : tk));
+      } catch (err) {
+        addMessage("# general", "manager", "Hmm, I couldn't access that link. Make sure the sharing settings are correct and try again!");
+      }
+      return;
+    }
+
+    // Technical flow
     try {
       addMessage("# engineering", "techlead", "Pulling up the repo... give me a sec 👀");
       setActivePanel("slack");
@@ -797,6 +843,24 @@ function Workspace({ session, onEnd }) {
     } catch (err) {
       addMessage("# engineering", "techlead", "Couldn't access that repo. Make sure it's public and the URL is correct. Try again.");
     }
+  };
+
+  // ── Request more tasks ──
+  const handleRequestMoreTasks = async () => {
+    if (generatingMore) return;
+    setGeneratingMore(true);
+    addMessage("# engineering", "manager", `Nice work clearing the board, ${session.name}! Let me put together the next batch of tasks for you.`);
+    setActivePanel("slack");
+    setActiveChannel("# engineering");
+
+    try {
+      const newTasks = await generateTasksForRole(session.role.label, session.role.company, session.duration.minutes, tasks);
+      setTasks(prev => [...prev, ...newTasks]);
+      addMessage("# engineering", "manager", `Alright, the board is updated with your next priorities. Check the Tasks panel!`);
+    } catch (e) {
+      addMessage("# engineering", "manager", `Actually, looks like we're good for now! Take a breather.`);
+    }
+    setGeneratingMore(false);
   };
 
   // ── End session + evaluate ──
@@ -997,7 +1061,7 @@ Be direct, constructive, and human. Not a robot.` }],
                 </div>
               </div>
             )}
-            {activePanel === "tasks" && <TaskBoard tasks={tasks} onUpdate={(id, status) => setTasks(t => t.map(tk => tk.id === id ? { ...tk, status } : tk))} onSubmitRepo={handleSubmitRepo} />}
+            {activePanel === "tasks" && <TaskBoard tasks={tasks} onUpdate={(id, status) => setTasks(t => t.map(tk => tk.id === id ? { ...tk, status } : tk))} onSubmitRepo={handleSubmitWork} onRequestMore={handleRequestMoreTasks} generatingMore={generatingMore} />}
             {activePanel === "docs" && <DocsPanel docs={docs} />}
           </div>
         </div>
