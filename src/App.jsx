@@ -130,7 +130,7 @@ function SetupScreen({ onStart }) {
     const role = {
       id: "custom",
       label: roleText.trim(),
-      company: companyText.trim() || "Syntern Inc.",
+      company: companyText.trim() || "Stagi Inc.",
       icon: "🚀",
       stack: "",
     };
@@ -159,7 +159,7 @@ function SetupScreen({ onStart }) {
             <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: ".68rem", color: "#a78bfa", letterSpacing: 1 }}>MULTI-AGENT SIMULATION</span>
           </div>
           <h1 style={{ fontFamily: "'Syne',sans-serif", fontWeight: 800, fontSize: "clamp(2.8rem,6vw,4.5rem)", letterSpacing: "-2px", lineHeight: 1, marginBottom: 16 }}>
-            Syn<span style={{ color: "#7c3aed" }}>tern</span>
+            Sta<span style={{ color: "#7c3aed" }}>gi</span>
           </h1>
           <p style={{ color: "#475569", fontSize: "1rem", lineHeight: 1.7 }}>
             Your first job — before your first job.<br />
@@ -225,7 +225,7 @@ function SetupScreen({ onStart }) {
           </button>
           {canStart && !starting && (
             <div style={{ marginTop: 12, fontSize: ".8rem", color: "#475569" }}>
-              You're joining <span style={{ color: "#a78bfa" }}>{companyText.trim() || "Syntern Inc."}</span> as a <span style={{ color: "#a78bfa" }}>{roleText.trim()}</span>
+              You're joining <span style={{ color: "#a78bfa" }}>{companyText.trim() || "Stagi Inc."}</span> as a <span style={{ color: "#a78bfa" }}>{roleText.trim()}</span>
             </div>
           )}
         </div>
@@ -556,7 +556,7 @@ function EvalReport({ data, session, onRestart }) {
         {/* Header */}
         <div style={{ textAlign: "center", marginBottom: 40 }}>
           <div style={{ fontFamily: "'Syne',sans-serif", fontWeight: 800, fontSize: "1.4rem", letterSpacing: "-1px", marginBottom: 4 }}>
-            Syn<span style={{ color: "#7c3aed" }}>tern</span> · Performance Report
+            Sta<span style={{ color: "#7c3aed" }}>gi</span> · Performance Report
           </div>
           <div style={{ color: "#475569", fontSize: ".82rem" }}>{session.role?.company} · {session.role?.label} · {new Date().toLocaleDateString()}</div>
         </div>
@@ -599,7 +599,7 @@ function EvalReport({ data, session, onRestart }) {
           <div style={{ width: 52, height: 52, background: "rgba(124,58,237,.2)", borderRadius: 14, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.6rem", flexShrink: 0 }}>🏅</div>
           <div>
             <div style={{ fontWeight: 600, fontSize: ".9rem", marginBottom: 4 }}>Badge Earned: Remote Work Simulator</div>
-            <div style={{ fontSize: ".78rem", color: "#475569" }}>Add to your CV and LinkedIn · Verified by Syntern AI</div>
+            <div style={{ fontSize: ".78rem", color: "#475569" }}>Add to your CV and LinkedIn · Verified by Stagi AI</div>
           </div>
         </div>
 
@@ -1240,7 +1240,7 @@ Be direct, constructive, and human. Not a robot.` }],
 
       {/* Top bar */}
       <div style={{ height: 44, background: "#faf5ffffffff", borderBottom: "1px solid #0f172a", display: "flex", alignItems: "center", padding: "0 16px", gap: 16, flexShrink: 0 }}>
-        <div style={{ fontFamily: "'Syne',sans-serif", fontWeight: 700, fontSize: ".95rem" }}>Syn<span style={{ color: "#7c3aed" }}>tern</span></div>
+        <div style={{ fontFamily: "'Syne',sans-serif", fontWeight: 700, fontSize: ".95rem" }}>Sta<span style={{ color: "#7c3aed" }}>gi</span></div>
         <div style={{ width: 1, height: 20, background: "#0f172a" }} />
         <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: ".7rem", color: "#475569" }}>{session.role.company}</div>
         <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 12 }}>
